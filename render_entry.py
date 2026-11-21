@@ -43,11 +43,11 @@ STATUS = {
 # Slot -> file ilustrasi final (nama sumber apa adanya, di root repo).
 HERO_IMG = {1: "hero-h1-nasdaq-only.png", 2: "hero-h2.png",
             3: "hero-h3.png", 4: "hero-h4.png"}
-STRIP_IMG = {5: "strip-a1-gtavi-text.png", 6: "strip-a2.png",
+STRIP_IMG = {5: "strip-a1-vi-pale.png", 6: "strip-a2.png",
              7: "strip-a3.png", 8: "strip-a4.png", 9: "strip-a5.png",
              10: "strip-a6.png", 11: "strip-a7.png", 12: "strip-a8.png",
              13: "strip-a9.png", 14: "strip-a10.png", 15: "strip-a11.png",
-             16: "strip-a12-logo-b.png"}
+             16: "strip-a12-f1-pale.png"}
 
 def F(px, bold=False, serif=False):
     if serif:

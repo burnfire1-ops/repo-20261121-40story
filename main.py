@@ -14,10 +14,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "entry.png")
 
-# sha256 pin of the sealed final artwork (entry.png v3, M3-fix).
+# sha256 pin of the sealed final artwork (entry.png v4, M5: A1 VI-pale + A12 F1-pale).
 # main.py refuses to publish any other bytes: a mismatched sha exits
 # non-zero before anything is copied to the output directory.
-ENTRY_SHA256 = "e8825c175587679d9b40ffaef25827abb61a53a50a5902c43342dd30f48f67b9"
+ENTRY_SHA256 = "461eb18ea5c96db0f458e4de7f5df6ea14b8631bef52729b1d1f46012838f8b1"
 
 
 def sha256_file(path):
@@ -30,7 +30,7 @@ def sha256_file(path):
 def verify_png(path):
     """Return (width, height) after checking PNG signature + IHDR.
 
-    Note (M4a): the sha256 pin of the sealed entry.png v3 is verified in
+    Note (M5): the sha256 pin of the sealed entry.png v4 is verified in
     main() before copying; verify_png itself only checks structure.
     """
     with open(path, "rb") as f:

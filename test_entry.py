@@ -16,7 +16,7 @@ RENDERER = os.path.join(ROOT, "render_entry.py")
 MAIN = os.path.join(ROOT, "main.py")
 
 HERO_FILES = ["hero-h1-nasdaq-only.png", "hero-h2.png", "hero-h3.png", "hero-h4.png"]
-STRIP_FILES = ["strip-a1-gtavi-text.png"] + [f"strip-a{i}.png" for i in range(2, 12)] + ["strip-a12-logo-b.png"]
+STRIP_FILES = ["strip-a1-vi-pale.png"] + [f"strip-a{i}.png" for i in range(2, 12)] + ["strip-a12-f1-pale.png"]
 
 failures = []
 
