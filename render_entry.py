@@ -5,8 +5,7 @@ Transkripsi + adaptasi build_main() sketsa rank-3 MAIN rev3:
   hero 180x102, strip 151x42, tanpa resize); label strip dihapus.
 - masthead kanan = "40 STORIES \u2022 6 REGIONS" saja (tanpa label model).
 - headline A1 = "GTA VI: $3.79B DAY ONE" (titik, Ruling 1).
-- footer model_note final: "RANK-3 MAIN: 40 stories \u2022 hero 22pt /
-  Tier A 13pt / brief 14pt 1 line, pitch 23px / map 330px \u2022 entry sum21".
+- footer SATU baris terpusat vertikal (legenda chip + Sources), tanpa metadata build (Ruling 14).
 Deterministik: tanpa random, tanpa timestamp.
 Jalankan: python3 render_entry.py  -> entry.png (1024x1024)
 """
@@ -467,9 +466,10 @@ def numbers_strip(d, y, dh):
     s = "THE DAY IN NUMBERS:  Nasdaq \u22125.28%  \u2022  Bitcoin $55,106  \u2022  GTA VI $3.79B  \u2022  Space Armor 16,100 mph  \u2022  Ebola 11,613 cases"
     text_fit(d, 25, y + 2, s, F(11, bold=True), 970, "numbers")
 
-def footer(d, y, dh, model_note):
+def footer(d, y, dh):
+    # SATU baris, terpusat vertikal di zona dh=30: chip 14px -> ly = y+8.
     lx = 25
-    ly = y + 2
+    ly = y + 8
     for status, meaning in [("CONFIRMED", "= 2+ outlets"), ("OFFICIAL", "= primary source"),
                             ("REPORTED", "= one outlet"), ("CLAIM", "= one-sided claim")]:
         bg, fg = STATUS[status]
@@ -483,9 +483,9 @@ def footer(d, y, dh, model_note):
         mtw = d.textlength(meaning, font=mf)
         d.text((lx, ly + 2), meaning, font=mf, fill=INK)
         lx += mtw + 14
-    text_fit(d, 25, y + 17,
-             "Sources: Reuters, CNN, AP, WHO, Formula1.com, WSJ  \u2022  " + model_note,
-             F(10), 970, "footer")
+    text_fit(d, lx, ly + 1,
+             "Sources: Reuters, CNN, AP, WHO, Formula1.com, WSJ",
+             F(10), 995 - lx, "footer")
 
 # ---------------------------------------------------------------- build
 def build_main():
@@ -504,7 +504,7 @@ def build_main():
     y += 292 + 3
     date_check(d, y, 36); y += 36 + 3
     numbers_strip(d, y, 18); y += 18 + 3
-    footer(d, y, 30, "RANK-3 MAIN: 40 stories \u2022 hero 22pt / Tier A 13pt / brief 14pt 1 line, pitch 23px / map 330px \u2022 entry sum21")
+    footer(d, y, 30)
     total = y + 30
     return img, total
 
