@@ -14,12 +14,24 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "entry.png")
 
+# sha256 pin of the sealed final artwork (entry.png v3, M3-fix).
+# main.py refuses to publish any other bytes: a mismatched sha exits
+# non-zero before anything is copied to the output directory.
+ENTRY_SHA256 = "e8825c175587679d9b40ffaef25827abb61a53a50a5902c43342dd30f48f67b9"
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        h.update(f.read())
+    return h.hexdigest()
+
 
 def verify_png(path):
     """Return (width, height) after checking PNG signature + IHDR.
 
-    Note (M1 v1): no sha256 pin yet — entry.png will still change in
-    M2/M3, so the pin is added in M4 once the final artwork is sealed.
+    Note (M4a): the sha256 pin of the sealed entry.png v3 is verified in
+    main() before copying; verify_png itself only checks structure.
     """
     with open(path, "rb") as f:
         data = f.read(33)
@@ -35,6 +47,12 @@ def main():
     outdir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     if not os.path.isfile(SRC):
         print(f"ERROR: entry.png not found at {SRC}", file=sys.stderr)
+        return 1
+    actual = sha256_file(SRC)
+    if actual != ENTRY_SHA256:
+        print("ERROR: entry.png sha256 mismatch", file=sys.stderr)
+        print(f"  expected: {ENTRY_SHA256}", file=sys.stderr)
+        print(f"  actual:   {actual}", file=sys.stderr)
         return 1
     os.makedirs(outdir, exist_ok=True)
     dst = os.path.join(outdir, "entry.png")
