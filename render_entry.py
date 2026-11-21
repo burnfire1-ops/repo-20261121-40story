@@ -120,7 +120,7 @@ BRIEFS = [
     (17, "ASIA", 85.8, 20.3, "Akvan weakens \u2014 rain 209mm"),
     (18, "ASIA", 85.1, 25.6, "Modi Bihar \u20b934,470cr"),
     (19, "ASIA", 77.2, 28.6, "Ramayana \u20b91,574.6cr box office"),
-    (20, "ASIA", 116.4, 39.9, "879,868 AI chips to China"),
+    (20, "ASIA", 116.4, 39.9, "House: 879,868 AI chips to China"),
     (21, "ASIA", 125.75, 39.03, "Kim inspects factory (Sat)"),
     (22, "ASIA", 72.8, 19.07, "India 1cr HPV doses"),
     (23, "EUROPE", 4.35, 50.85, "Gen Z protests, 25 countries"),
@@ -455,8 +455,8 @@ def date_check(d, y, dh):
     d.rectangle([15, y, 108, y + dh], fill=RULE_RED)
     d.text((25, y + dh // 2 - 7), "DATE CHECK", font=F(10, bold=True), fill=(255, 255, 255))
     lines = [
-        "Fri 20 Nov: Nasdaq crash (US markets closed Sat)  \u2022  Sat 21 Nov: Bitcoin low $55,106; Hormuz tankers hit; COP31 overtime.",
-        "Riemann = CLAIM, unverified  \u2022  Shenzhen = analysis 21 Nov (summit 19 Nov)  \u2022  Badme fighting since 9 Nov  \u2022  Peru quake 6.7\u20136.8  \u2022  Rosal\u00eda 9 noms.",
+        "Fri 20 Nov: Nasdaq crash (US markets closed Sat)  \u2022  Sat 21 Nov: Bitcoin low $55,106; Hormuz tankers hit; COP31 overtime.  \u2022  GTA VI announced 20 Nov.",
+        "Riemann = CLAIM, unverified; Stanford counter-draft 21 Nov  \u2022  Shenzhen = analysis 21 Nov (summit 19 Nov)  \u2022  Badme fighting since 9 Nov  \u2022  Peru quake 6.7\u20136.8.",
         "Left out on purpose: C3 (Jul 2026 article)  \u2022  Egypt\u2013IMF (deal 18 Nov)  \u2022  Morocco \u20ac366M (18 Nov).",
     ]
     for j, ln in enumerate(lines):
@@ -484,7 +484,7 @@ def footer(d, y, dh, model_note):
         d.text((lx, ly + 2), meaning, font=mf, fill=INK)
         lx += mtw + 14
     text_fit(d, 25, y + 17,
-             "Sources: Reuters, CNN, AP, WHO, Formula1.com, WSJ, IBD, BBC  \u2022  " + model_note,
+             "Sources: Reuters, CNN, AP, WHO, Formula1.com, WSJ  \u2022  " + model_note,
              F(10), 970, "footer")
 
 # ---------------------------------------------------------------- build
