@@ -15,7 +15,7 @@ ENTRY = os.path.join(ROOT, "entry.png")
 RENDERER = os.path.join(ROOT, "render_entry.py")
 MAIN = os.path.join(ROOT, "main.py")
 
-HERO_FILES = ["hero-h1-nasdaq-only.png", "hero-h2.png", "hero-h3.png", "hero-h4.png"]
+HERO_FILES = ["hero-h1-crash-bars.png", "hero-h2.png", "hero-h3.png", "hero-h4.png"]
 STRIP_FILES = ["strip-a1-vi-pale.png"] + [f"strip-a{i}.png" for i in range(2, 12)] + ["strip-a12-f1-pale.png"]
 
 failures = []
@@ -74,6 +74,19 @@ def test_b_renderer_report():
     check("pin di luar 0", m and int(m.group(1)) == 0, m.group(0) if m else "no match")
     m = re.search(r"pasang pin tumpang tindih=(\d+)", out)
     check("pin tumpang tindih 0", m and int(m.group(1)) == 0, m.group(0) if m else "no match")
+    # M9: strip angka besar di atas + tag outlet per kartu Tier A.
+    m = re.search(r"numbers_pt=(\d+)", out)
+    check("angka besar numbers_pt >= 20", m and int(m.group(1)) >= 20,
+          m.group(0) if m else "no match")
+    m = re.search(r"source_tags=(\d+)/12", out)
+    check("tag outlet 12/12 kartu Tier A", m and int(m.group(1)) == 12,
+          m.group(0) if m else "no match")
+    m = re.search(r"map_w=(\d+)", out)
+    check("peta kecil map_w <= 240", m and int(m.group(1)) <= 240,
+          m.group(0) if m else "no match")
+    m = re.search(r"brief_font=(\d+)", out)
+    check("brief font >= 15pt", m and int(m.group(1)) >= 15,
+          m.group(0) if m else "no match")
 
 
 def test_c_illustrations():

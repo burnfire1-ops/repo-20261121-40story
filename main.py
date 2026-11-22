@@ -14,10 +14,11 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "entry.png")
 
-# sha256 pin of the sealed final artwork (entry.png v4, M5: A1 VI-pale + A12 F1-pale).
-# main.py refuses to publish any other bytes: a mismatched sha exits
-# non-zero before anything is copied to the output directory.
-ENTRY_SHA256 = "461eb18ea5c96db0f458e4de7f5df6ea14b8631bef52729b1d1f46012838f8b1"
+# sha256 pin of the sealed final artwork (entry.png v5, M9: strip angka besar
+# di atas + tag outlet per kartu Tier A + tag hero). main.py refuses to
+# publish any other bytes: a mismatched sha exits non-zero before anything
+# is copied to the output directory.
+ENTRY_SHA256 = "05b086dba054c3b354bc9e5cf5accf8532dc46aef7a7e2dfe966f87e3e1f4f25"
 
 
 def sha256_file(path):

@@ -10,7 +10,8 @@ Deterministik: tanpa random, tanpa timestamp.
 Jalankan: python3 render_entry.py  -> entry.png (1024x1024)
 """
 import os, sys
-from PIL import Image, ImageDraw, ImageFont
+from collections import Counter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SANS = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -41,7 +42,7 @@ STATUS = {
 }
 
 # Slot -> file ilustrasi final (nama sumber apa adanya, di root repo).
-HERO_IMG = {1: "hero-h1-nasdaq-only.png", 2: "hero-h2.png",
+HERO_IMG = {1: "hero-h1-crash-bars.png", 2: "hero-h2.png",
             3: "hero-h3.png", 4: "hero-h4.png"}
 STRIP_IMG = {5: "strip-a1-vi-pale.png", 6: "strip-a2.png",
              7: "strip-a3.png", 8: "strip-a4.png", 9: "strip-a5.png",
@@ -66,55 +67,59 @@ pins_overlap_pairs = 0
 HERO = [
     (1, "AMERICAS", "WALL ST", "AI MELTDOWN: NASDAQ \u22125.3%",
      "Nasdaq \u22125.28% Fri, worst week since Mar 2020; Bitcoin $55,106 Sat AM.",
-     "CONFIRMED", -74.0, 40.7),
+     "CONFIRMED", -74.0, 40.7, "CNN"),
     (2, "MID EAST", "HORMUZ", "HORMUZ: TWO TANKERS HIT",
      "Two tankers hit Sat 21 Nov near Khasab, Oman; no deaths.",
-     "CONFIRMED", 56.2, 26.2),
+     "CONFIRMED", 56.2, 26.2, "REUTERS"),
     (3, "EUROPE", "KRYVYI RIH", "RUSSIA TRIPLE-TAP KRYVYI RIH",
      "Missile then drones as rescuers arrived; boy, 7, and medic, 20, killed.",
-     "CONFIRMED", 33.4, 47.9),
+     "CONFIRMED", 33.4, 47.9, "CNN"),
     (4, "EUROPE", "ANTALYA", "COP31: NO DEAL, FOSSIL CUT",
      "Overtime Sat with no deal; draft drops the word \u2018fossil\u2019.",
-     "CONFIRMED", 30.7, 36.9),
+     "CONFIRMED", 30.7, 36.9, "AP"),
 ]
 TIER_A = [
     (5, "AMERICAS", "MIAMI", "GTA VI: $3.79B DAY ONE",
      "$3.79B day one, biggest ever; announced 20 Nov.",
-     "CONFIRMED", -80.2, 25.8),
+     "CONFIRMED", -80.2, 25.8, "AP"),
     (6, "AMERICAS", "ROCH.", "RADIATION ALTERS BRAIN",
      "Rochester: immune cells alter; behaviour unchanged.",
-     "REPORTED", -77.6, 43.16),
+     "REPORTED", -77.6, 43.16, "INSHORTS"),
     (7, "AMERICAS", "S.F.", "RIEMANN CLAIMED",
      "CLAIMED \u2014 unverified; Stanford counters.",
-     "CLAIM", -122.4, 37.8),
+     "CLAIM", -122.4, 37.8, "PHYS.ORG"),
     (8, "EUROPE", "GENEVA", "KILLER ROBOTS",
      "Talks by 2028; US, Russia, Israel balk.",
-     "CONFIRMED", 6.14, 46.2),
+     "CONFIRMED", 6.14, 46.2, "REUTERS"),
     (9, "ASIA", "SHENZ.", "SHENZHEN: XI WINS MOST",
      "Analysis 21 Nov; summit was 19 Nov.",
-     "CONFIRMED", 114.06, 22.55),
+     "CONFIRMED", 114.06, 22.55, "REUTERS"),
     (10, "MID EAST", "GAZA", "ISRAEL KILLS 3 WCK STAFF",
      "Aid vehicle hit in Gaza City Sat.",
-     "REPORTED", 34.47, 31.5),
+     "REPORTED", 34.47, 31.5, "REUTERS"),
     (11, "ASIA", "YONG.", "YONGBYON EXPANDS",
      "Satellite images; IAEA confirms.",
-     "REPORTED", 126.3, 39.8),
+     "REPORTED", 126.3, 39.8, "WSJ"),
     (12, "ASIA", "TOKYO", "CHINA SNUBS JAPAN PM",
      "Xi refuses formal talks; handshake only.",
-     "REPORTED", 139.69, 35.68),
+     "REPORTED", 139.69, 35.68, "EUROPE SAYS"),
     (13, "AFRICA", "BADME", "BADME CLASH",
      "Fighting since 9 Nov; build-up 21 Nov.",
-     "REPORTED", 37.9, 14.7),
+     "REPORTED", 37.9, 14.7, "FIKIR"),
     (14, "AMERICAS", "TEXAS", "SPACE ARMOR: 16,100 MPH",
      "3mm projectile stopped at 16,100 mph; aluminium fails.",
-     "REPORTED", -97.7, 30.3),
+     "REPORTED", -97.7, 30.3, "DEFENSE NEWS"),
     (15, "AFRICA", "KINSHASA", "EBOLA: WHO ALERT STAYS",
      "11,613 cases; 5,678 deaths.",
-     "OFFICIAL", 15.3, -4.3),
+     "OFFICIAL", 15.3, -4.3, "WHO"),
     (16, "AMERICAS", "VEGAS", "VERSTAPPEN TAKES POLE",
      "Antonelli fastest; Verstappen inherits pole.",
-     "OFFICIAL", -115.14, 36.17),
+     "OFFICIAL", -115.14, 36.17, "FORMULA1.COM"),
 ]
+# M9: elemen ke-9 tiap HERO/TIER_A = tag nama outlet, terverifikasi satu per
+# satu ke verifikasi-live-sum21-40.md (A1 AP, A2 INSHORTS, A3 PHYS.ORG,
+# A4/A5/A6 REUTERS, A7 WSJ, A8 EUROPE SAYS, A9 FIKIR, A10 DEFENSE NEWS,
+# A11 WHO, A12 FORMULA1.COM; hero H1 CNN, H2 REUTERS, H3 CNN, H4 AP).
 BRIEFS = [
     (17, "ASIA", 85.8, 20.3, "Akvan weakens \u2014 rain 209mm"),
     (18, "ASIA", 85.1, 25.6, "Modi Bihar \u20b934,470cr"),
@@ -233,22 +238,31 @@ def timeline(d, y, h):
 # ---------------------------------------------------------------- hero + Tier A
 def hero_rows(img, d, y, hh, headline_pt, iw):
     w = (994 - 8) // 2
-    for i, (n, reg, city, head, dek, status, _lon, _lat) in enumerate(HERO):
+    for i, (n, reg, city, head, dek, status, _lon, _lat, outlet) in enumerate(HERO):
         r, c = divmod(i, 2)
         x = 15 + c * (w + 8)
-        yy = y + r * (hh + 6)
+        yy = y + r * (hh + 4)
         rc = REGION[reg][0]
         d.rectangle([x, yy, x + w, yy + hh], fill=(255, 255, 255), outline=INK, width=2)
-        paste_illustration(img, x + 6, yy + 6, HERO_IMG[n], iw, hh - 12, f"hero{n}")
+        paste_illustration(img, x + 6, yy + 4, HERO_IMG[n], iw, hh - 8, f"hero{n}")
         tx = x + 6 + iw + 10
         tw = x + w - 8 - tx
         num_dot(d, tx, yy + 6, n, rc, r=9, fs=10)
-        text_fit(d, tx + 22, yy + 8, f"{CODE[reg]} \u2022 {city}", F(9, bold=True), tw - 90,
+        reg_s = f"{CODE[reg]} \u2022 {city}"
+        text_fit(d, tx + 22, yy + 8, reg_s, F(9, bold=True), tw - 90,
                  f"hero{n}-region")
-        status_chip(d, x + w - 8, yy + 6, status, f"hero{n}-status")
+        chip_w = status_chip(d, x + w - 8, yy + 6, status, f"hero{n}-status")
+        # M9: tag outlet hero, rata kanan sebelum chip status (8pt abu).
+        tf = F(8, bold=True)
+        tgw = d.textlength(outlet, font=tf)
+        tag_x = x + w - 8 - chip_w - 6 - tgw
+        reg_w = d.textlength(reg_s, font=F(9, bold=True))
+        if tx + 22 + reg_w + 4 > tag_x:
+            violations.append(f"hero{n}-tag: '{outlet}' bertabrakan dengan region")
+        d.text((tag_x, yy + 8), outlet, font=tf, fill=GREY)
         hf = F(pt(headline_pt), bold=True, serif=True)
         lines = wrap_lines(d, head, hf, tw, 2, f"hero{n}-headline")
-        ly = yy + 25
+        ly = yy + 24
         for ln in lines:
             d.text((tx, ly), ln, font=hf, fill=INK)
             ly += pt(headline_pt)
@@ -257,28 +271,35 @@ def hero_rows(img, d, y, hh, headline_pt, iw):
             d.text((tx, ly + 2 + j * 12), ln, font=df, fill=INK)
 
 def tier_grid(img, d, y, cell_h, headline_pt, strip_h):
-    gap = 8
-    for i, (n, reg, city, head, fact, status, _lon, _lat) in enumerate(TIER_A):
+    gap = 6
+    for i, (n, reg, city, head, fact, status, _lon, _lat, outlet) in enumerate(TIER_A):
         r, c = divmod(i, 6)
         x = 15 + c * (159 + gap)
         yy = y + r * (cell_h + gap)
         rc = REGION[reg][0]
         d.rectangle([x, yy, x + 159, yy + cell_h], fill=(255, 255, 255), outline=INK, width=1)
         paste_illustration(img, x + 4, yy + 4, STRIP_IMG[n], 151, strip_h, f"tier{n}")
-        ty = yy + 4 + strip_h + 5
-        num_dot(d, x + 6, ty, n, rc, r=8, fs=9)
+        ty = yy + 4 + strip_h + 3
+        num_dot(d, x + 6, ty, n, rc, r=7, fs=8)
         chip_w = status_chip(d, x + 155, ty, status, f"tier{n}-status")
         text_fit(d, x + 24, ty + 2, f"{CODE[reg]} \u2022 {city}", F(8, bold=True),
                  (x + 155 - chip_w) - (x + 24) - 6, f"tier{n}-region")
         hf = F(pt(headline_pt), bold=True, serif=True)
         lines = wrap_lines(d, head, hf, 159 - 12, 2, f"tier{n}-headline")
-        ly = ty + 19
+        ly = ty + 15
         for ln in lines:
             d.text((x + 6, ly), ln, font=hf, fill=INK)
             ly += pt(headline_pt)
         ff = F(10)
         for j, ln in enumerate(wrap_lines(d, fact, ff, 159 - 12, 2, f"tier{n}-fact")):
-            d.text((x + 6, ly + 1 + j * 12), ln, font=ff, fill=INK)
+            d.text((x + 6, ly + 1 + j * 11), ln, font=ff, fill=INK)
+        # M9: tag outlet, baris tetap di dasar kartu (8pt abu, rata kiri).
+        # Posisi tetap (yy+cell_h-12) supaya konsisten walau headline 1 baris.
+        tf = F(8, bold=True)
+        tw = d.textlength(outlet, font=tf)
+        if tw > 159 - 12:
+            violations.append(f"tier{n}-tag: '{outlet}' lebar {tw:.0f} > {159 - 12}")
+        d.text((x + 6, yy + cell_h - 12), outlet, font=tf, fill=GREY)
 
 # ---------------------------------------------------------------- peta dunia
 CONTINENTS = [
@@ -317,15 +338,41 @@ CONTINENTS = [
     [(167, -45), (169, -43), (171, -41), (173, -40), (175, -38), (174, -41),
      (172, -43), (169, -46)],
 ]
-PIN_SHIFT = {26: (-13, 10), 27: (13, -10), 8: (-12, 12), 23: (-13, 10),
-             24: (13, 12), 25: (0, 14), 32: (-14, -8)}
+# Hitungan cerita per region — DIHITUNG dari data di atas, bukan disalin:
+# AMERICAS 11, EUROPE 8, ASIA 9, MID EAST 4, AFRICA 5, OCEANIA 3 = 40.
+REGION_COUNTS = Counter(
+    [r[1] for r in HERO] + [r[1] for r in TIER_A] + [r[1] for r in BRIEFS])
+assert sum(REGION_COUNTS.values()) == 40
+
+# M8: peta kecil (zona minor) + brief type lebih besar.
+MAP_W = 220            # 200-240, ~22% lebar zona brief (pemenang: ~25%)
+BRIEF_FONT_PT = 16     # 14 -> 16 (15 juga muat; 16 dipilih, slack >= 53px)
+BRIEF_ROW_H = 23       # 12 baris: baris terakhir berakhir y+280 < y+292
+PIN_D = 12             # diameter pin peta kecil; ambang tumpang tindih = PIN_D
+# PIN_SHIFT: kipas pra-sebar untuk klaster padat di peta kecil (Eropa 8 pin
+# di ~45x45px, pantai timur AS 3 pin, LA 2 pin, Timur Tengah 4 pin, Asia
+# selatan 5 pin). Tanpa ini loop de-overlap melempar pin jauh dari daratan.
+PIN_SHIFT = {
+    1: (-8, 4), 2: (14, 15), 3: (20, -12), 4: (14, 9),
+    5: (-4, 2), 6: (0, -13), 7: (-4, -4), 8: (8, 8),
+    9: (-4, -4), 10: (-10, 6), 11: (5, 4), 12: (7, -10),
+    13: (-4, -4), 14: (-6, -4), 16: (8, 6), 17: (-6, 10),
+    19: (-12, -8), 20: (-8, -6), 22: (16, 0), 23: (22, 0),
+    24: (-8, 10), 25: (-4, 8), 26: (-2, 0), 27: (10, -12),
+    28: (12, -9), 29: (-3, 11), 30: (-10, -6), 31: (0, 14),
+    32: (12, -10), 37: (-10, -2), 38: (4, -8),
+}
+# Posisi pin akhir (n, x, y) dalam koordinat lokal peta (0..mw, 0..mh),
+# diisi draw_map untuk verifikasi daratan (pincheck) — tidak mengubah render.
+LAST_PINS = []
+LAST_MAP = (0, 0)
 
 def draw_map(d, x, y, w, h):
-    global pins_outside, pins_overlap_pairs
+    global pins_outside, pins_overlap_pairs, LAST_MAP
     d.rectangle([x, y, x + w, y + h], fill=(214, 230, 238), outline=INK, width=1)
     d.text((x + 8, y + 4), "WHERE IT HAPPENED", font=F(11, bold=True), fill=INK)
     mx, my = x + 6, y + 22
-    mw, mh = w - 12, h - 22 - 34
+    mw, mh = w - 12, h - 92
     for k in range(1, 6):
         d.line([(mx + k * mw / 6, my), (mx + k * mw / 6, my + mh)], fill=(190, 210, 220), width=1)
     for k in range(1, 4):
@@ -335,16 +382,16 @@ def draw_map(d, x, y, w, h):
     for poly in CONTINENTS:
         pts = [proj(lon, lat) for lon, lat in poly]
         d.polygon(pts, fill=(232, 222, 196), outline=(150, 140, 120))
-    all_pins = [(n, reg, lon, lat) for (n, reg, _c, _h, _d, _s, lon, lat) in HERO] + \
-               [(n, reg, lon, lat) for (n, reg, _c, _h, _f, _s, lon, lat) in TIER_A] + \
+    all_pins = [(n, reg, lon, lat) for (n, reg, _c, _h, _d, _s, lon, lat, _o) in HERO] + \
+               [(n, reg, lon, lat) for (n, reg, _c, _h, _f, _s, lon, lat, _o) in TIER_A] + \
                [(n, reg, lon, lat) for (n, reg, lon, lat, _s) in BRIEFS]
     placed = []
     for n, reg, lon, lat in all_pins:
         px, py = proj(lon, lat)
         dx, dy = PIN_SHIFT.get(n, (0, 0))
-        px, py = px + dx - 7, py + dy - 7
-        px = max(mx, min(px, mx + mw - 15))
-        py = max(my, min(py, my + mh - 15))
+        px, py = px + dx - PIN_D // 2, py + dy - PIN_D // 2
+        px = max(mx, min(px, mx + mw - PIN_D))
+        py = max(my, min(py, my + mh - PIN_D))
         placed.append([px, py])
     for _ in range(40):
         disp = [[0.0, 0.0] for _ in placed]
@@ -353,15 +400,15 @@ def draw_map(d, x, y, w, h):
             for j in range(i + 1, len(placed)):
                 dx = placed[j][0] - placed[i][0]
                 dy = placed[j][1] - placed[i][1]
-                if abs(dx) < 15 and abs(dy) < 15:
+                if abs(dx) < PIN_D + 1 and abs(dy) < PIN_D + 1:
                     moved = True
                     if abs(dx) <= abs(dy):
-                        push = (15 - abs(dx)) / 2 + 1
+                        push = (PIN_D + 1 - abs(dx)) / 2 + 1
                         s = 1 if dx >= 0 else -1
                         disp[i][0] -= push * s
                         disp[j][0] += push * s
                     else:
-                        push = (15 - abs(dy)) / 2 + 1
+                        push = (PIN_D + 1 - abs(dy)) / 2 + 1
                         s = 1 if dy >= 0 else -1
                         disp[i][1] -= push * s
                         disp[j][1] += push * s
@@ -370,46 +417,101 @@ def draw_map(d, x, y, w, h):
         for i in range(len(placed)):
             mx_, my_ = disp[i]
             m = max(abs(mx_), abs(my_))
-            if m > 7:
-                mx_, my_ = mx_ * 7 / m, my_ * 7 / m
+            if m > 3:
+                mx_, my_ = mx_ * 3 / m, my_ * 3 / m
             placed[i] = [placed[i][0] + mx_, placed[i][1] + my_]
-        placed = [[max(mx, min(px, mx + mw - 15)),
-                   max(my, min(py, my + mh - 15))] for (px, py) in placed]
+        placed = [[max(mx, min(px, mx + mw - PIN_D)),
+                   max(my, min(py, my + mh - PIN_D))] for (px, py) in placed]
+    # M8: settle — pin yang berakhir >6px dari daratan (lingkaran pin tidak
+    # menyentuh darat) digeser ke titik terdekat yang <=6px dari daratan
+    # (Euclidean, dicek eksak) tanpa menimbulkan tumpang tindih. Loop
+    # de-overlap di atas kadang "melempar" pin tepi klaster ke laut.
+    land_mask = Image.new("L", (int(mw), int(mh)), 0)
+    lmd = ImageDraw.Draw(land_mask)
+    for poly in CONTINENTS:
+        lmd.polygon([((lon + 180) / 360 * mw, (75 - lat) / 130 * mh)
+                     for lon, lat in poly], fill=255)
+    near_land = land_mask.filter(ImageFilter.MaxFilter(11))
+
+    def _near_land(x, y):
+        xi, yi = int(round(x)), int(round(y))
+        if not (0 <= xi < mw and 0 <= yi < mh):
+            return False
+        if near_land.getpixel((xi, yi)) == 0:
+            return False
+        for ddx in range(-5, 6):
+            for ddy in range(-5, 6):
+                if ddx * ddx + ddy * ddy > 25:
+                    continue
+                xx, yy = xi + ddx, yi + ddy
+                if 0 <= xx < mw and 0 <= yy < mh and land_mask.getpixel((xx, yy)):
+                    return True
+        return False
+
+    for k in range(len(placed)):
+        lx, ly = placed[k][0] + PIN_D / 2 - mx, placed[k][1] + PIN_D / 2 - my
+        if _near_land(lx, ly):
+            continue
+        found = None
+        for r in range(1, 13):
+            cands = []
+            for ddx in range(-r, r + 1):
+                cands.append((lx + ddx, ly - r))
+                cands.append((lx + ddx, ly + r))
+            for ddy in range(-r + 1, r):
+                cands.append((lx - r, ly + ddy))
+                cands.append((lx + r, ly + ddy))
+            for (cand_x, cand_y) in cands:
+                if not _near_land(cand_x, cand_y):
+                    continue
+                ok = True
+                for j in range(len(placed)):
+                    if j != k and abs((placed[j][0] + PIN_D / 2) - (mx + cand_x)) < PIN_D \
+                            and abs((placed[j][1] + PIN_D / 2) - (my + cand_y)) < PIN_D:
+                        ok = False
+                        break
+                if ok:
+                    found = (cand_x, cand_y)
+                    break
+            if found:
+                break
+        if found:
+            placed[k] = [mx + found[0] - PIN_D / 2, my + found[1] - PIN_D / 2]
+    LAST_PINS.clear()
+    LAST_PINS.extend((n, px + PIN_D / 2 - mx, py + PIN_D / 2 - my)
+                     for (n, _r, _lo, _la), (px, py) in zip(all_pins, placed))
+    LAST_MAP = (mw, mh)
     for (n, reg, lon, lat), (px, py) in zip(all_pins, placed):
-        d.ellipse([px, py, px + 14, py + 14], fill=REGION[reg][0],
+        d.ellipse([px, py, px + PIN_D, py + PIN_D], fill=REGION[reg][0],
                   outline=(255, 255, 255), width=1)
         s = str(n)
-        f = F(8, bold=True)
-        d.text((px + 7 - d.textlength(s, font=f) / 2, py + 2), s, font=f, fill=(255, 255, 255))
+        f = F(7, bold=True)
+        d.text((px + PIN_D // 2 - d.textlength(s, font=f) / 2, py + 2), s, font=f, fill=(255, 255, 255))
         stories_seen.append(n)
     for (px, py) in placed:
-        if px < mx or px > mx + mw - 15 or py < my or py > my + mh - 15:
+        if px < mx or px > mx + mw - PIN_D or py < my or py > my + mh - PIN_D:
             pins_outside += 1
     for i in range(len(placed)):
         for j in range(i + 1, len(placed)):
-            if abs(placed[i][0] - placed[j][0]) < 14 and abs(placed[i][1] - placed[j][1]) < 14:
+            if abs(placed[i][0] - placed[j][0]) < PIN_D and abs(placed[i][1] - placed[j][1]) < PIN_D:
                 pins_overlap_pairs += 1
                 print(f"  OVERLAP PIN: #{all_pins[i][0]} vs #{all_pins[j][0]}")
-    ix, iy, iw, ih = x + 8, y + h - 34 - 52 - 15, 92, 46
-    d.rectangle([ix, iy, ix + iw, iy + ih], fill=(250, 246, 236), outline=INK, width=1)
-    d.text((ix + 4, iy + 2), "THE GULF", font=F(8, bold=True), fill=INK)
-    d.ellipse([ix + 48, iy + 20, ix + 58, iy + 30], fill=REGION["MID EAST"][0])
-    d.text((ix + 61, iy + 21), "#2", font=F(8, bold=True), fill=INK)
-    d.text((ix + 4, iy + 33), "Hormuz #2 \u2022 Riyadh #29", font=F(8), fill=INK)
-    for ly, regs in ((y + h - 45, ["EUROPE", "MID EAST", "ASIA"]),
-                     (y + h - 30, ["AMERICAS", "AFRICA", "OCEANIA"])):
-        lx = x + 8
-        for reg in regs:
+    # M8: inset "THE GULF" DIHAPUS — tidak muat di peta 220px tanpa menutup
+    # Eropa/Timur Tengah; pin #2 (Hormuz) dan #29 (Riyadh) tetap bernomor.
+    # Legenda 2 kolom x 3 baris, dengan hitungan TOTAL cerita per region.
+    leg_cols = (["EUROPE", "MID EAST", "ASIA"], ["AMERICAS", "AFRICA", "OCEANIA"])
+    for ci, regs in enumerate(leg_cols):
+        lx = x + 8 + ci * 104
+        for ri, reg in enumerate(regs):
+            ly = y + h - 64 + ri * 13
             d.ellipse([lx, ly + 1, lx + 8, ly + 9], fill=REGION[reg][0])
-            lx += 10
             f = F(8, bold=True)
-            label = f"{reg} ({CODE[reg]})"
+            label = f"{reg} ({CODE[reg]}) {REGION_COUNTS[reg]}"
             tw = d.textlength(label, font=f)
-            if lx + tw > x + w - 8:
+            if lx + 10 + tw > x + w - 8:
                 violations.append(f"map-legenda: '{label}' melebihi lebar peta")
-            d.text((lx, ly), label, font=f, fill=INK)
-            lx += tw + 6
-    d.text((x + 8, y + h - 15), "40 of 40 pinned  \u2022  lat \u221290\u00b0 to +90\u00b0 (approx.)",
+            d.text((lx + 10, ly), label, font=f, fill=INK)
+    d.text((x + 8, y + h - 15), "40 of 40 pinned (approx.)",
            font=F(9), fill=GREY)
 
 # ---------------------------------------------------------------- brief
@@ -459,12 +561,37 @@ def date_check(d, y, dh):
         "Left out on purpose: C3 (Jul 2026 article)  \u2022  Egypt\u2013IMF (deal 18 Nov)  \u2022  Morocco \u20ac366M (18 Nov).",
     ]
     for j, ln in enumerate(lines):
-        text_fit(d, 118, y + 2 + j * 11, ln, F(10), 884, f"datecheck{j}")
+        text_fit(d, 118, y + 2 + j * 10, ln, F(9), 884, f"datecheck{j}")
 
-def numbers_strip(d, y, dh):
+# M9: strip angka BESAR di atas (model superskie "THE DAY IN NUMBERS").
+# Angka-angka dipindah dari strip kecil 18px di bawah (DIHAPUS — jangan
+# duplikasi angka, pelajaran hazel); nilainya persis yang sudah ada di
+# footer v5b, tidak ada fakta/angka baru. Angka 20pt bold, label 8pt di
+# bawah angka, masing-masing terpusat di kolomnya (5 kolom x ~199px).
+# "16,100 mph" (180px) adalah yang terlebar dan tetap muat di kolomnya.
+NUMBERS_PT = 20
+NUMBERS = [
+    ("\u22125.28%", "NASDAQ"),
+    ("$55,106", "BITCOIN"),
+    ("$3.79B", "GTA VI DAY ONE"),
+    ("16,100 mph", "SPACE ARMOR"),
+    ("11,613", "EBOLA CASES"),
+]
+
+def numbers_strip_big(d, y, dh):
     d.rectangle([15, y, 1009, y + dh], fill=(238, 230, 210))
-    s = "THE DAY IN NUMBERS:  Nasdaq \u22125.28%  \u2022  Bitcoin $55,106  \u2022  GTA VI $3.79B  \u2022  Space Armor 16,100 mph  \u2022  Ebola 11,613 cases"
-    text_fit(d, 25, y + 2, s, F(11, bold=True), 970, "numbers")
+    d.text((25, y + 1), "THE DAY IN NUMBERS", font=F(10, bold=True), fill=RULE_RED)
+    nf = F(pt(NUMBERS_PT), bold=True)
+    lf = F(8, bold=True)
+    col_w = 994 / 5
+    for i, (num, lab) in enumerate(NUMBERS):
+        cx = 15 + col_w * i + col_w / 2
+        nw = d.textlength(num, font=nf)
+        if nw > col_w - 8:
+            violations.append(f"numbers{i}: '{num}' lebar {nw:.0f} > {col_w - 8:.0f}")
+        d.text((cx - nw / 2, y + 12), num, font=nf, fill=INK)
+        lw = d.textlength(lab, font=lf)
+        d.text((cx - lw / 2, y + 39), lab, font=lf, fill=GREY)
 
 def footer(d, y, dh):
     # SATU baris, terpusat vertikal di zona dh=30: chip 14px -> ly = y+8.
@@ -496,16 +623,17 @@ def build_main():
     y = 10
     masthead(d, y, 54); y += 54 + 3
     timeline(d, y, 32); y += 32 + 3
-    hero_rows(img, d, y, 114, 22, 180); y += 114 + 6 + 114 + 3
-    tier_grid(img, d, y, 132, 13, 42); y += 132 + 8 + 132 + 3
+    numbers_strip_big(d, y, 50); y += 50 + 3
+    hero_rows(img, d, y, 110, 21, 180); y += 110 + 4 + 110 + 3
+    tier_grid(img, d, y, 132, 12, 42); y += 132 + 6 + 132 + 2
     zone_head(d, y, "AS 6 \u2022 EU 5 \u2022 ME 2 \u2022 AM 5 \u2022 AF 3 \u2022 OC 3")
     y += 16 + 2
-    brief_cols(d, y, 292, cols=2, rows_per_col=[12, 12], row_h=23, font_pt=14, map_w=330)
-    y += 292 + 3
-    date_check(d, y, 36); y += 36 + 3
-    numbers_strip(d, y, 18); y += 18 + 3
-    footer(d, y, 30)
-    total = y + 30
+    brief_cols(d, y, 284, cols=2, rows_per_col=[12, 12], row_h=BRIEF_ROW_H,
+               font_pt=BRIEF_FONT_PT, map_w=MAP_W)
+    y += 284 + 2
+    date_check(d, y, 34); y += 34 + 2
+    footer(d, y, 24)
+    total = y + 24
     return img, total
 
 def run():
@@ -514,7 +642,10 @@ def run():
     ok_count = (n == list(range(1, 41)))
     ok_h = (total <= 1024)
     img.save(os.path.join(ROOT, "entry.png"))
-    print(f"RANK3-MAIN: total={total}/1024 slack={1024-total} | cerita unik={len(n)} "
+    n_tags = sum(1 for t in TIER_A if len(t) > 8 and t[8])
+    print(f"RANK3-MAIN: total={total}/1024 slack={1024-total} | map_w={MAP_W} "
+          f"brief_font={BRIEF_FONT_PT} | numbers_pt={NUMBERS_PT} "
+          f"source_tags={n_tags}/12 | cerita unik={len(n)} "
           f"count_ok={ok_count} height_ok={ok_h} | pelanggaran teks={len(violations)} | "
           f"pin di luar peta={pins_outside} | pasang pin tumpang tindih={pins_overlap_pairs}")
     for v in violations[:20]:
